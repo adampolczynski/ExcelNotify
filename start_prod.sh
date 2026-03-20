@@ -15,10 +15,10 @@ if [ -z "$VIRTUAL_ENV" ]; then
     echo "Warning: No virtual environment detected. Consider activating one."
 fi
 
-# Start Gunicorn
-echo "Starting production server on http://0.0.0.0:8000"
+# Start Gunicorn on default web port (80)
+echo "Starting production server on http://0.0.0.0:80"
 exec gunicorn \
-    --bind 0.0.0.0:8000 \
+    --bind 0.0.0.0:80 \
     --workers 4 \
     --worker-class sync \
     --worker-connections 1000 \
