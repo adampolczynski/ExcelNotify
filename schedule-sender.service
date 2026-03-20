@@ -1,0 +1,17 @@
+[Unit]
+Description=Schedule Sender Flask Application
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/user/schedule-sender
+Environment="PATH=/home/user/schedule-sender/venv/bin"
+ExecStart=/home/user/schedule-sender/venv/bin/gunicorn --bind 127.0.0.1:8000 --workers 4 wsgi:application
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/schedule-sender/app.log
+StandardError=append:/var/log/schedule-sender/error.log
+
+[Install]
+WantedBy=multi-user.target
