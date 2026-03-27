@@ -4,5 +4,6 @@ gunicorn==25.1.0
 python-dotenv==1.0.0
 requests==2.31.0
 openpyxl==3.1.5
+xlrd==2.0.1
 Werkzeug==3.1.6
 twilio==9.1.0
