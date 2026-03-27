@@ -1,57 +1,246 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Schedule Sender</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAM Pielęgniarstwo - Plan Zajęć</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 </head>
 <body>
-  <div class="container">
-    <div class="topbar">
-      <h1>Excel → WhatsApp Schedule Sender</h1>
-      <a href="{{ url_for('logout') }}" class="logout-btn">Sign out</a>
-    </div>
-
-    <div class="card">
-      <form method="POST" enctype="multipart/form-data">
-        <div class="form-group">
-          <label for="file">Excel File <span class="required">*</span></label>
-          <input type="file" id="file" name="file" accept=".xlsx,.xls" required />
+    <div class="container">
+        <div class="topbar">
+            <h1>📅 PAM Pielęgniarstwo - Plan Zajęć{% if last_update_time %} (ostatnia aktualizacja {{ last_update_time }}){% endif %}</h1>
         </div>
-
-        <div class="form-group">
-          <label for="class">Class <span class="optional">(leave blank for all classes)</span></label>
-          <input type="text" id="class" name="class" placeholder="e.g. 9"
-                 value="{{ session.get('last_class', request.form.get('class', '')) }}" />
+        
+        <div class="card filters-card">
+            <h2>Filtry</h2>
+            
+            <div class="filter-group">
+                <label for="groups">Grupy:</label>
+                <select id="groups" multiple="multiple" style="width: 100%;">
+                    {% for group_name in classes %}
+                        <option value="{{ group_name }}" {% if group_name in selected_classes %}selected{% endif %}>{{ group_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="date_from">Od:</label>
+                    <input type="date" id="date_from" value="{{ date_from }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date_to">Do:</label>
+                    <input type="date" id="date_to" value="{{ date_to }}">
+                </div>
+            </div>
+         
+            <div class="button-row">
+                <button id="btn_clear_all" class="btn btn-danger">✕ Wyczyść filtry</button>
+                <input type="text" id="search_table" placeholder="Wyszukaj w tabeli" class="search-input">
+            </div>
         </div>
-
-        <div class="form-group">
-          <label for="date">Date <span class="optional">(leave blank for today)</span></label>
-          <input type="date" id="date" name="date"
-                 value="{{ session.get('last_date', request.form.get('date', '')) }}" />
-        </div>
-
-        <button type="submit" class="btn btn-preview">Preview</button>
-      </form>
+        
+        {% if error %}
+            <div class="card error">
+                <strong>Błąd:</strong> {{ error }}
+            </div>
+        {% endif %}
+        
+        {% if not error %}
+            {% if table_data %}
+                <div class="card table-card">
+                    <h2>Plan zajęć ({{ table_data|length }} wpisów)</h2>
+                    <div class="table-wrapper">
+                        <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-column="0">Data<span class="sort-indicator"></span></th>
+                                <th class="sortable" data-column="1">Grupa<span class="sort-indicator"></span></th>
+                                <th class="sortable" data-column="2">Godzina<span class="sort-indicator"></span></th>
+                                <th class="sortable" data-column="3">Przedmiot (metoda)<span class="sort-indicator"></span></th>
+                                <th class="sortable" data-column="4">Sala<span class="sort-indicator"></span></th>
+                                <th class="sortable" data-column="5">Prowadzący<span class="sort-indicator"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in table_data %}
+                                {% set has_missing = not row.room or not row.get('title', '') and not row.get('instructor', '') %}
+                                <tr {% if has_missing %}class="row-incomplete"{% endif %} data-search-text="{{ row.date }} {{ row.class }} {{ row.start_time }} {{ row.subject }}{% if row.get('method', '') %} {{ row.get('method', '') }}{% endif %} {{ row.room }} {{ row.get('title', '') }} {{ row.get('instructor', '') }}">
+                                    <td class="col-nowrap">{{ row.date }}</td>
+                                    <td class="col-nowrap"><span class="badge badge-{{ row.class[-1].lower() if row.class[-1].isalpha() else 'default' }}">{{ row.class }}</span></td>
+                                    <td class="col-nowrap">{{ row.start_time }}</td>
+                                    <td>{{ row.subject }}{% if row.get('method', '') %} ({{ row.get('method', '') }}){% endif %}</td>
+                                    <td>{{ row.room }}</td>
+                                    <td>{{ row.get('title', '') }}{% if row.get('title', '') and row.get('instructor', '') %} - {% endif %}{{ row.get('instructor', '') }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card info">
+                    <strong>ℹ️ Wybierz grupy z listy powyżej, aby wyświetlić plan zajęć.</strong>
+                </div>
+            {% endif %}
+        {% endif %}
     </div>
-
-    {% if error %}
-    <div class="card error">
-      <strong>Error:</strong> {{ error }}
-    </div>
-    {% endif %}
-
-    {% if preview %}
-    <div class="card preview-card">
-      <h2>Preview</h2>
-      <pre>{{ preview }}</pre>
-
-      <form action="/send" method="POST">
-        <button type="submit" class="btn btn-send">Send via WhatsApp</button>
-      </form>
-    </div>
-    {% endif %}
-  </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2
+            $('#groups').select2({
+                placeholder: 'Wybierz grupy...',
+                allowClear: true
+            });
+            
+            // Initialize jQuery UI Datepicker
+            $('#date_from').datepicker({
+                dateFormat: 'yy-mm-dd',
+                onClose: updateFilters
+            });
+            
+            $('#date_to').datepicker({
+                dateFormat: 'yy-mm-dd',
+                onClose: updateFilters
+            });
+            
+            // Update on filter change
+            function updateFilters() {
+                const groups = $('#groups').val() || [];
+                const dateFrom = $('#date_from').val();
+                const dateTo = $('#date_to').val();
+                
+                const params = new URLSearchParams();
+                if (groups.length > 0) {
+                    params.append('groups', groups.join(','));
+                }
+                if (dateFrom) {
+                    params.append('date_from', dateFrom);
+                }
+                if (dateTo) {
+                    params.append('date_to', dateTo);
+                }
+                
+                window.location = '/?' + params.toString();
+            }
+            
+            $('#groups').on('change', updateFilters);
+            
+            // Date navigation buttons
+            function addDays(dateStr, days) {
+                const date = new Date(dateStr);
+                date.setDate(date.getDate() + days);
+                return date.toISOString().split('T')[0];
+            }
+            
+            $('#btn_prev_from').on('click', function() {
+                const currentDate = $('#date_from').val();
+                if (currentDate) {
+                    $('#date_from').val(addDays(currentDate, -1));
+                    updateFilters();
+                }
+            });
+            
+            $('#btn_next_from').on('click', function() {
+                const currentDate = $('#date_from').val();
+                if (currentDate) {
+                    $('#date_from').val(addDays(currentDate, 1));
+                    updateFilters();
+                }
+            });
+            
+            $('#btn_prev_to').on('click', function() {
+                const currentDate = $('#date_to').val();
+                if (currentDate) {
+                    $('#date_to').val(addDays(currentDate, -1));
+                    updateFilters();
+                }
+            });
+            
+            $('#btn_next_to').on('click', function() {
+                const currentDate = $('#date_to').val();
+                if (currentDate) {
+                    $('#date_to').val(addDays(currentDate, 1));
+                    updateFilters();
+                }
+            });
+            
+            // Clear all button - clears selection AND navigates
+            $('#btn_clear_all').on('click', function() {
+                $('#groups').val(null).trigger('change');
+                setTimeout(function() {
+                    window.location = '/';
+                }, 100);
+            });
+            
+            // Table sorting
+            let sortColumn = -1;
+            let sortAscending = true;
+            
+            $('.schedule-table th.sortable').on('click', function() {
+                const columnIndex = $(this).data('column');
+                const table = $(this).closest('table');
+                const tbody = table.find('tbody');
+                const rows = tbody.find('tr').toArray();
+                
+                // Toggle ascending/descending if clicking the same column
+                if (sortColumn === columnIndex) {
+                    sortAscending = !sortAscending;
+                } else {
+                    sortColumn = columnIndex;
+                    sortAscending = true;
+                }
+                
+                // Update sort indicators
+                $('.schedule-table th .sort-indicator').text('');
+                $(this).find('.sort-indicator').text(sortAscending ? ' ▲' : ' ▼');
+                
+                // Sort rows
+                rows.sort(function(rowA, rowB) {
+                    const cellA = $(rowA).find('td').eq(columnIndex).text().trim().toLowerCase();
+                    const cellB = $(rowB).find('td').eq(columnIndex).text().trim().toLowerCase();
+                    
+                    // Try numeric sort first
+                    const numA = parseFloat(cellA.replace(/[^0-9.-]/g, ''));
+                    const numB = parseFloat(cellB.replace(/[^0-9.-]/g, ''));
+                    
+                    let comparison = 0;
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        comparison = numA - numB;
+                    } else {
+                        comparison = cellA.localeCompare(cellB, 'pl');
+                    }
+                    
+                    return sortAscending ? comparison : -comparison;
+                });
+                
+                // Re-append sorted rows
+                $.each(rows, function() {
+                    tbody.append(this);
+                });
+            });
+            
+            // Table search/filter
+            $('#search_table').on('keyup', function() {
+                const searchText = $(this).val().toLowerCase();
+                $('.schedule-table tbody tr').each(function() {
+                    const rowText = $(this).data('search-text').toLowerCase();
+                    if (searchText === '' || rowText.includes(searchText)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
