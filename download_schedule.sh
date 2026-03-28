@@ -12,6 +12,8 @@ PROJECT_DIR="${WEBAPP_ROOT}/project"
 SOURCE_DIR="${PROJECT_DIR}/source"
 OUTPUT_FILE="${SOURCE_DIR}/schedule.xlsx"
 LOG_FILE="${WEBAPP_ROOT}/download.log"
+VENV_PYTHON="${WEBAPP_ROOT}/venv/bin/python3"
+GUNICORN="${WEBAPP_ROOT}/venv/bin/gunicorn"
 
 # Create source directory if it doesn't exist
 mkdir -p "${SOURCE_DIR}"
@@ -28,12 +30,14 @@ if [ -f "${OUTPUT_FILE}" ]; then
     pkill -9 -f gunicorn
     rm -f /tmp/gunicorn.pid
     
-    # Start Gunicorn in background
+    sleep 1
+    
+    # Start Gunicorn in background using full paths
     cd "${PROJECT_DIR}"
-    nohup bash -c 'source ${WEBAPP_ROOT}/venv/bin/activate 2>/dev/null; gunicorn --bind 127.0.0.1:8000 --workers 4 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --timeout 30 --keep-alive 2 --log-level info --access-logfile - --error-logfile - wsgi:application' >> "${LOG_FILE}" 2>&1 &
+    nohup "${GUNICORN}" --bind 127.0.0.1:8000 --workers 4 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --timeout 30 --keep-alive 2 --log-level info --access-logfile - --error-logfile - wsgi:application >> "${LOG_FILE}" 2>&1 &
     
     sleep 2
-    echo "[$(date)] ✅ Gunicorn restart initiated" >> "${LOG_FILE}"
+    echo "[$(date)] ✅ Gunicorn restart completed" >> "${LOG_FILE}"
     exit 0
 else
     echo "[$(date)] ❌ Failed to download schedule" >> "${LOG_FILE}"
