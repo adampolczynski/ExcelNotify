@@ -22,7 +22,13 @@ curl -L -o "${OUTPUT_FILE}" "${DOWNLOAD_URL}"
 # Check if download was successful
 if [ -f "${OUTPUT_FILE}" ]; then
     echo "[$(date)] ✅ Schedule downloaded successfully to ${OUTPUT_FILE}" >> "${LOG_FILE}"
-    echo "[$(date)] ℹ️ Manual restart required: cd ~/webapp/project && pkill -9 gunicorn; sleep 3; ./start_prod.sh" >> "${LOG_FILE}"
+    
+    # Restart the webapp service to load new data
+    echo "[$(date)] 🔄 Restarting webapp service..." >> "${LOG_FILE}"
+    sudo systemctl restart webapp
+    
+    sleep 2
+    echo "[$(date)] ✅ Webapp service restarted" >> "${LOG_FILE}"
     exit 0
 else
     echo "[$(date)] ❌ Failed to download schedule" >> "${LOG_FILE}"
