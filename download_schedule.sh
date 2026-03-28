@@ -27,15 +27,17 @@ if [ -f "${OUTPUT_FILE}" ]; then
     
     # Restart Gunicorn to load the new data
     echo "[$(date)] 🔄 Restarting Gunicorn..." >> "${LOG_FILE}"
-    pkill -9 -f gunicorn
+    
+    # Kill all gunicorn processes - be very aggressive
+    killall -9 gunicorn 2>/dev/null || true
+    pkill -9 -f /gunicorn 2>/dev/null || true
     rm -f /tmp/gunicorn.pid
     
-    # Wait for port to fully release
-    sleep 3
-    
-    # Kill any remaining processes on port 8000
+    # Force release the port
     fuser -k 8000/tcp 2>/dev/null || true
-    sleep 2
+    
+    # Wait for everything to fully clean up
+    sleep 5
     
     # Start Gunicorn in background using full paths
     cd "${PROJECT_DIR}"
