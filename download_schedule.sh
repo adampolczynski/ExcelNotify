@@ -25,10 +25,13 @@ if [ -f "${OUTPUT_FILE}" ]; then
     echo "[$(date)] 🔄 Restarting Gunicorn..." >> "${PROJECT_DIR}/download.log"
     pkill -9 -f gunicorn
     rm -f /tmp/gunicorn.pid
-    sleep 2
-    cd "${PROJECT_DIR}" && nohup ./start_prod.sh >> "${PROJECT_DIR}/download.log" 2>&1 &
-    echo "[$(date)] ✅ Gunicorn restarted" >> "${PROJECT_DIR}/download.log"
     
+    # Start Gunicorn in background (don't wait for it to complete)
+    cd "${PROJECT_DIR}"
+    nohup bash -c 'source venv/bin/activate 2>/dev/null; gunicorn --bind 127.0.0.1:8000 --workers 4 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --timeout 30 --keep-alive 2 --log-level info --access-logfile - --error-logfile - wsgi:application' >> "${PROJECT_DIR}/download.log" 2>&1 &
+    
+    sleep 2
+    echo "[$(date)] ✅ Gunicorn restart initiated" >> "${PROJECT_DIR}/download.log"
     exit 0
 else
     echo "[$(date)] ❌ Failed to download schedule" >> "${PROJECT_DIR}/download.log"
