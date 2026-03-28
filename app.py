@@ -12,7 +12,15 @@ load_dotenv()
 app = Flask(__name__)
 
 # Source directory for Excel files
-SOURCE_DIR = os.path.join(os.path.dirname(__file__), "source")
+# Try webapp/source first (VPS), fall back to project/source (local)
+WEBAPP_SOURCE = os.path.join(os.path.dirname(__file__), "..", "source")
+PROJECT_SOURCE = os.path.join(os.path.dirname(__file__), "source")
+
+if os.path.exists(WEBAPP_SOURCE):
+    SOURCE_DIR = WEBAPP_SOURCE
+else:
+    SOURCE_DIR = PROJECT_SOURCE
+
 os.makedirs(SOURCE_DIR, exist_ok=True)
 
 
@@ -123,8 +131,10 @@ def load_schedule_data():
     # Rename to canonical names
     df = df.rename(columns={v: k for k, v in col_map.items()})
 
-    # Normalize date column
-    df["date"] = pd.to_datetime(df["date"], format='mixed', errors='coerce', dayfirst=True)
+    # Normalize date column - handle both dots and dashes (YYYY.MM.DD or YYYY-MM-DD format)
+    df["date"] = df["date"].astype(str).str.replace('.', '-', regex=False)
+    # Format is YYYY-MM-DD, so don't use dayfirst=True (it would swap month/day)
+    df["date"] = pd.to_datetime(df["date"], format='%Y-%m-%d', errors='coerce')
     df = df.dropna(subset=['date'])
     df["date"] = df["date"].dt.date.astype(str)
 

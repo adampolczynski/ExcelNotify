@@ -185,25 +185,12 @@
             let sortColumn = -1;
             let sortAscending = true;
             
-            $('.schedule-table th.sortable').on('click', function() {
-                const columnIndex = $(this).data('column');
-                const table = $(this).closest('table');
+            // Function to sort table
+            function sortTable(columnIndex, ascending) {
+                const table = $('.schedule-table');
                 const tbody = table.find('tbody');
                 const rows = tbody.find('tr').toArray();
                 
-                // Toggle ascending/descending if clicking the same column
-                if (sortColumn === columnIndex) {
-                    sortAscending = !sortAscending;
-                } else {
-                    sortColumn = columnIndex;
-                    sortAscending = true;
-                }
-                
-                // Update sort indicators
-                $('.schedule-table th .sort-indicator').text('');
-                $(this).find('.sort-indicator').text(sortAscending ? ' ▲' : ' ▼');
-                
-                // Sort rows
                 rows.sort(function(rowA, rowB) {
                     const cellA = $(rowA).find('td').eq(columnIndex).text().trim().toLowerCase();
                     const cellB = $(rowB).find('td').eq(columnIndex).text().trim().toLowerCase();
@@ -219,13 +206,40 @@
                         comparison = cellA.localeCompare(cellB, 'pl');
                     }
                     
-                    return sortAscending ? comparison : -comparison;
+                    return ascending ? comparison : -comparison;
                 });
                 
                 // Re-append sorted rows
                 $.each(rows, function() {
                     tbody.append(this);
                 });
+            }
+            
+            // Apply default sorting by date (column 0) on page load
+            if ($('.schedule-table tbody tr').length > 0) {
+                sortColumn = 0;
+                sortAscending = true;
+                sortTable(0, true);
+                $('.schedule-table th[data-column="0"] .sort-indicator').text(' ▲');
+            }
+            
+            $('.schedule-table th.sortable').on('click', function() {
+                const columnIndex = $(this).data('column');
+                
+                // Toggle ascending/descending if clicking the same column
+                if (sortColumn === columnIndex) {
+                    sortAscending = !sortAscending;
+                } else {
+                    sortColumn = columnIndex;
+                    sortAscending = true;
+                }
+                
+                // Update sort indicators
+                $('.schedule-table th .sort-indicator').text('');
+                $(this).find('.sort-indicator').text(sortAscending ? ' ▲' : ' ▼');
+                
+                // Sort the table
+                sortTable(columnIndex, sortAscending);
             });
             
             // Table search/filter
