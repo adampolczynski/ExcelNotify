@@ -1,15 +1,17 @@
 #!/bin/bash
 # Auto-download schedule from Google Drive
-# Add to crontab with: 0 7 * * * /path/to/download_schedule.sh
+# Add to crontab with: 0 7 * * * ~/webapp/download_schedule.sh
 
 # Google Drive file ID
 FILE_ID="1_lBSt7ZT9Cz57gPcT00gpJt_gJ9u6mbz"
 DOWNLOAD_URL="https://drive.google.com/uc?export=download&id=${FILE_ID}"
 
-# Project directory
-PROJECT_DIR="/home/beat/Code/web/project"
+# Project directories
+WEBAPP_ROOT="$HOME/webapp"
+PROJECT_DIR="${WEBAPP_ROOT}/project"
 SOURCE_DIR="${PROJECT_DIR}/source"
 OUTPUT_FILE="${SOURCE_DIR}/schedule.xlsx"
+LOG_FILE="${WEBAPP_ROOT}/download.log"
 
 # Create source directory if it doesn't exist
 mkdir -p "${SOURCE_DIR}"
@@ -19,21 +21,21 @@ curl -L -o "${OUTPUT_FILE}" "${DOWNLOAD_URL}"
 
 # Check if download was successful
 if [ -f "${OUTPUT_FILE}" ]; then
-    echo "[$(date)] ✅ Schedule downloaded successfully to ${OUTPUT_FILE}" >> "${PROJECT_DIR}/download.log"
+    echo "[$(date)] ✅ Schedule downloaded successfully to ${OUTPUT_FILE}" >> "${LOG_FILE}"
     
     # Restart Gunicorn to load the new data
-    echo "[$(date)] 🔄 Restarting Gunicorn..." >> "${PROJECT_DIR}/download.log"
+    echo "[$(date)] 🔄 Restarting Gunicorn..." >> "${LOG_FILE}"
     pkill -9 -f gunicorn
     rm -f /tmp/gunicorn.pid
     
-    # Start Gunicorn in background (don't wait for it to complete)
+    # Start Gunicorn in background
     cd "${PROJECT_DIR}"
-    nohup bash -c 'source venv/bin/activate 2>/dev/null; gunicorn --bind 127.0.0.1:8000 --workers 4 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --timeout 30 --keep-alive 2 --log-level info --access-logfile - --error-logfile - wsgi:application' >> "${PROJECT_DIR}/download.log" 2>&1 &
+    nohup bash -c 'source ${WEBAPP_ROOT}/venv/bin/activate 2>/dev/null; gunicorn --bind 127.0.0.1:8000 --workers 4 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --timeout 30 --keep-alive 2 --log-level info --access-logfile - --error-logfile - wsgi:application' >> "${LOG_FILE}" 2>&1 &
     
     sleep 2
-    echo "[$(date)] ✅ Gunicorn restart initiated" >> "${PROJECT_DIR}/download.log"
+    echo "[$(date)] ✅ Gunicorn restart initiated" >> "${LOG_FILE}"
     exit 0
 else
-    echo "[$(date)] ❌ Failed to download schedule" >> "${PROJECT_DIR}/download.log"
+    echo "[$(date)] ❌ Failed to download schedule" >> "${LOG_FILE}"
     exit 1
 fi
