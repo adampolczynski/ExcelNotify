@@ -30,7 +30,12 @@ if [ -f "${OUTPUT_FILE}" ]; then
     pkill -9 -f gunicorn
     rm -f /tmp/gunicorn.pid
     
-    sleep 1
+    # Wait for port to fully release
+    sleep 3
+    
+    # Kill any remaining processes on port 8000
+    fuser -k 8000/tcp 2>/dev/null || true
+    sleep 2
     
     # Start Gunicorn in background using full paths
     cd "${PROJECT_DIR}"
