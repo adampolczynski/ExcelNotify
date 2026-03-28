@@ -43,7 +43,8 @@ if [ -f "${OUTPUT_FILE}" ]; then
     cd "${PROJECT_DIR}"
     nohup "${GUNICORN}" --bind 127.0.0.1:8000 --workers 4 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --timeout 30 --keep-alive 2 --log-level info --access-logfile - --error-logfile - wsgi:application >> "${LOG_FILE}" 2>&1 &
     
-    sleep 2
+    # Wait for gunicorn to fully start
+    sleep 3
     echo "[$(date)] ✅ Gunicorn restart completed" >> "${LOG_FILE}"
     exit 0
 else
