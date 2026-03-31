@@ -7,6 +7,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 
+from change_history import ScheduleChangeTracker
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -178,6 +180,26 @@ def get_last_update_time():
         return None
 
 
+def save_previous_schedule(df):
+    """Save current schedule for comparison next time"""
+    try:
+        prev_file = os.path.join(SOURCE_DIR, "schedule_previous.csv")
+        df.to_csv(prev_file, index=False)
+    except:
+        pass  # Silently fail if can't save
+
+
+def load_previous_schedule():
+    """Load previously saved schedule for comparison"""
+    try:
+        prev_file = os.path.join(SOURCE_DIR, "schedule_previous.csv")
+        if os.path.exists(prev_file):
+            return pd.read_csv(prev_file)
+    except:
+        pass
+    return None
+
+
 def download_schedule_file():
     """Download schedule file from Google Drive."""
     import subprocess
@@ -265,6 +287,15 @@ def index():
     # Convert to table rows (list of dicts)
     table_data = df_filtered.to_dict(orient="records")
 
+    # Track changes from previous schedule
+    tracker = ScheduleChangeTracker(os.path.join(SOURCE_DIR, "change_history.json"))
+    previous_df = load_previous_schedule()
+    changes = tracker.compare_schedules(previous_df, df)
+    save_previous_schedule(df)
+    
+    # Get changes for display
+    latest_changes = tracker.get_changes_for_display()
+
     return render_template(
         "index.html",
         classes=unique_groups,
@@ -273,6 +304,7 @@ def index():
         date_to=date_to_param,
         table_data=table_data,
         last_update_time=get_last_update_time(),
+        latest_changes=latest_changes,
     )
 
 

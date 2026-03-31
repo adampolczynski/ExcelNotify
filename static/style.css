@@ -424,6 +424,93 @@ select:focus {
   border-color: #4a90e2;
 }
 
+/* Changes section styling */
+.changes-card {
+  background: #f9f9f9;
+  margin-top: 20px;
+}
+
+.changes-section {
+  margin-bottom: 24px;
+}
+
+.changes-section:last-child {
+  margin-bottom: 0;
+}
+
+.changes-title {
+  font-size: clamp(0.95rem, 4vw, 1.1rem);
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.additions-title {
+  background: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.removals-title {
+  background: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+.changes-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+}
+
+.changes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  min-width: 500px;
+}
+
+.changes-table thead {
+  background: #f0f0f0;
+  border-bottom: 2px solid #ddd;
+}
+
+.changes-table th {
+  padding: clamp(6px, 2vw, 10px);
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.changes-table td {
+  padding: clamp(6px, 2vw, 10px);
+  border-bottom: 1px solid #eee;
+}
+
+.additions-table tbody tr {
+  background: #f3fff3;
+}
+
+.additions-table tbody tr:hover {
+  background: #e8f5e9;
+}
+
+.removals-table tbody tr {
+  background: #fff3f3;
+}
+
+.removals-table tbody tr:hover {
+  background: #ffe8e8;
+}
+
+.changes-timestamp {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: normal;
+}
+
 /* Date navigation labels */
 .date-nav-label {
   font-weight: 600;
