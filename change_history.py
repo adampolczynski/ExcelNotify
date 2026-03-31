@@ -90,15 +90,17 @@ class ScheduleChangeTracker:
         return self.changes_list[:limit]
     
     def get_changes_for_display(self):
-        """Get formatted changes for template display"""
+        """Get most recent change entry that actually has changes"""
         if not self.changes_list:
             return None
         
-        latest = self.changes_list[0]
-        return {
-            "timestamp": latest["timestamp"],
-            "additions_count": latest["additions_count"],
-            "removals_count": latest["removals_count"],
-            "additions": latest["additions"],
-            "removals": latest["removals"]
-        }
+        for entry in self.changes_list:
+            if entry["additions_count"] > 0 or entry["removals_count"] > 0:
+                return {
+                    "timestamp": entry["timestamp"],
+                    "additions_count": entry["additions_count"],
+                    "removals_count": entry["removals_count"],
+                    "additions": entry["additions"],
+                    "removals": entry["removals"]
+                }
+        return None

@@ -91,7 +91,7 @@
         {% endif %}
     </div>
 
-    {% if latest_changes and (latest_changes.additions or latest_changes.removals) %}
+    {% if latest_changes %}
         <div class="container">
             <div class="card changes-card">
                 <h2>📋 Historia zmian <span class="changes-timestamp">({{ latest_changes.timestamp }})</span></h2>

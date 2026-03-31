@@ -287,11 +287,21 @@ def index():
     # Convert to table rows (list of dicts)
     table_data = df_filtered.to_dict(orient="records")
 
-    # Track changes from previous schedule
+    # Track changes from previous schedule (only when Excel file has changed)
     tracker = ScheduleChangeTracker(os.path.join(SOURCE_DIR, "change_history.json"))
-    previous_df = load_previous_schedule()
-    changes = tracker.compare_schedules(previous_df, df)
-    save_previous_schedule(df)
+    excel_file = os.path.join(SOURCE_DIR, "schedule.xlsx")
+    mtime_file = os.path.join(SOURCE_DIR, "last_compared.txt")
+    excel_mtime = os.path.getmtime(excel_file) if os.path.exists(excel_file) else 0
+    try:
+        last_compared = float(open(mtime_file).read().strip())
+    except:
+        last_compared = 0
+    if excel_mtime > last_compared:
+        previous_df = load_previous_schedule()
+        tracker.compare_schedules(previous_df, df)
+        save_previous_schedule(df)
+        with open(mtime_file, 'w') as f:
+            f.write(str(excel_mtime))
     
     # Get changes for display
     latest_changes = tracker.get_changes_for_display()
