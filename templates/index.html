@@ -88,73 +88,76 @@
                 </div>
             {% endif %}
             
-            {% if latest_changes and (latest_changes.additions or latest_changes.removals) %}
-                <div class="card changes-card">
-                    <h2>📋 Historia zmian <span class="changes-timestamp">({{ latest_changes.timestamp }})</span></h2>
-                    
-                    {% if latest_changes.additions %}
-                        <div class="changes-section">
-                            <h3 class="changes-title additions-title">✅ Dodane zajęcia ({{ latest_changes.additions_count }})</h3>
-                            <div class="changes-table-wrapper">
-                                <table class="changes-table additions-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Grupa</th>
-                                            <th>Czas</th>
-                                            <th>Przedmiot</th>
-                                            <th>Sala</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for row in latest_changes.additions %}
-                                            <tr>
-                                                <td class="col-nowrap">{{ row.date }}</td>
-                                                <td class="col-nowrap">{{ row.class }}</td>
-                                                <td class="col-nowrap">{{ row.start_time }}</td>
-                                                <td>{{ row.subject }}</td>
-                                                <td>{{ row.room }}</td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    {% endif %}
-                    
-                    {% if latest_changes.removals %}
-                        <div class="changes-section">
-                            <h3 class="changes-title removals-title">❌ Usunięte zajęcia ({{ latest_changes.removals_count }})</h3>
-                            <div class="changes-table-wrapper">
-                                <table class="changes-table removals-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Grupa</th>
-                                            <th>Czas</th>
-                                            <th>Przedmiot</th>
-                                            <th>Sala</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for row in latest_changes.removals %}
-                                            <tr>
-                                                <td class="col-nowrap">{{ row.date }}</td>
-                                                <td class="col-nowrap">{{ row.class }}</td>
-                                                <td class="col-nowrap">{{ row.start_time }}</td>
-                                                <td>{{ row.subject }}</td>
-                                                <td>{{ row.room }}</td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    {% endif %}
-                </div>
-            {% endif %}
         {% endif %}
     </div>
+
+    {% if latest_changes and (latest_changes.additions or latest_changes.removals) %}
+        <div class="container">
+            <div class="card changes-card">
+                <h2>📋 Historia zmian <span class="changes-timestamp">({{ latest_changes.timestamp }})</span></h2>
+                
+                {% if latest_changes.additions %}
+                    <div class="changes-section">
+                        <h3 class="changes-title additions-title">✅ Dodane zajęcia ({{ latest_changes.additions_count }})</h3>
+                        <div class="changes-table-wrapper">
+                            <table class="changes-table additions-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Grupa</th>
+                                        <th>Czas</th>
+                                        <th>Przedmiot</th>
+                                        <th>Sala</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in latest_changes.additions %}
+                                        <tr>
+                                            <td class="col-nowrap">{{ row.date }}</td>
+                                            <td class="col-nowrap">{{ row.class }}</td>
+                                            <td class="col-nowrap">{{ row.start_time }}</td>
+                                            <td>{{ row.subject }}</td>
+                                            <td>{{ row.room }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {% if latest_changes.removals %}
+                    <div class="changes-section">
+                        <h3 class="changes-title removals-title">❌ Usunięte zajęcia ({{ latest_changes.removals_count }})</h3>
+                        <div class="changes-table-wrapper">
+                            <table class="changes-table removals-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Grupa</th>
+                                        <th>Czas</th>
+                                        <th>Przedmiot</th>
+                                        <th>Sala</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in latest_changes.removals %}
+                                        <tr>
+                                            <td class="col-nowrap">{{ row.date }}</td>
+                                            <td class="col-nowrap">{{ row.class }}</td>
+                                            <td class="col-nowrap">{{ row.start_time }}</td>
+                                            <td>{{ row.subject }}</td>
+                                            <td>{{ row.room }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
     
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
