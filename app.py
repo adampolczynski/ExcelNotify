@@ -59,10 +59,13 @@ def get_unique_groups(all_classes):
     """
     unique_primary_groups = set()
     for class_str in all_classes:
+        if not class_str:  # skip empty (all-groups rows)
+            continue
         groups = extract_individual_groups(class_str)
         for group in groups:
             primary = extract_primary_group(group)
-            unique_primary_groups.add(primary)
+            if primary:
+                unique_primary_groups.add(primary)
     return sorted(unique_primary_groups, key=lambda x: (len(x), x))
 
 
@@ -140,8 +143,8 @@ def load_schedule_data():
     df = df.dropna(subset=['date'])
     df["date"] = df["date"].dt.date.astype(str)
 
-    # Normalize class column
-    df["class"] = df["class"].astype(str).fillna("").str.strip()
+    # Normalize class column - convert NaN/"nan" to empty string
+    df["class"] = df["class"].fillna("").astype(str).str.strip().replace("nan", "")
     
     # Clean up required columns
     df["subject"] = df["subject"].astype(str).fillna("").str.strip()
@@ -156,9 +159,13 @@ def load_schedule_data():
     if "method" in df.columns:
         df["method"] = df["method"].astype(str).fillna("").str.strip()
     
-    # Remove rows with empty class or date
-    df = df[df["class"] != ""]
-    df = df[df["date"] != ""]
+    # Keep only rows that have at least date + subject + start_time filled
+    # Group (class column) may be empty - those rows are shown for all groups
+    df = df[
+        (df["date"] != "") &
+        (df["subject"].astype(str).str.strip().replace("nan", "") != "") &
+        (df["start_time"].astype(str).str.strip().replace("nan", "") != "")
+    ]
 
     return df, None
 
@@ -267,15 +274,17 @@ def index():
         # Find all classes where any group matches the selected primary groups
         matching_classes = []
         for class_str in all_classes:
+            if not class_str:  # empty = all groups, always include
+                continue
             class_groups = extract_individual_groups(class_str)
             for class_group in class_groups:
                 if extract_primary_group(class_group) in selected_groups:
                     matching_classes.append(class_str)
                     break  # Don't add the same class twice
+        date_mask = (df["date"] >= str(date_from)) & (df["date"] <= str(date_to))
         df_filtered = df[
-            (df["class"].isin(matching_classes)) &
-            (df["date"] >= str(date_from)) &
-            (df["date"] <= str(date_to))
+            (df["class"].isin(matching_classes) | (df["class"] == "")) &
+            date_mask
         ]
     else:
         # No groups selected - show empty

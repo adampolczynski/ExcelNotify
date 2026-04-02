@@ -71,7 +71,7 @@
                                 {% set has_missing = not row.room or not row.get('title', '') and not row.get('instructor', '') %}
                                 <tr {% if has_missing %}class="row-incomplete"{% endif %} data-search-text="{{ row.date }} {{ row.class }} {{ row.start_time }} {{ row.subject }}{% if row.get('method', '') %} {{ row.get('method', '') }}{% endif %} {{ row.room }} {{ row.get('title', '') }} {{ row.get('instructor', '') }}">
                                     <td class="col-nowrap">{{ row.date }}</td>
-                                    <td class="col-nowrap"><span class="badge badge-{{ row.class[-1].lower() if row.class[-1].isalpha() else 'default' }}">{{ row.class }}</span></td>
+                                    <td class="col-nowrap"><span class="badge badge-{{ row.class[-1].lower() if row.class and row.class[-1].isalpha() else 'default' }}">{{ row.class if row.class else 'Wszystkie' }}</span></td>
                                     <td class="col-nowrap">{{ row.start_time }}</td>
                                     <td>{{ row.subject }}{% if row.get('method', '') %} ({{ row.get('method', '') }}){% endif %}</td>
                                     <td>{{ row.room }}</td>
@@ -98,8 +98,10 @@
                 
                 {% if latest_changes.additions %}
                     <div class="changes-section">
-                        <h3 class="changes-title additions-title">✅ Dodane zajęcia ({{ latest_changes.additions_count }})</h3>
-                        <div class="changes-table-wrapper">
+                        <h3 class="changes-title additions-title collapsible-header" data-target="additions-body" data-count="{{ latest_changes.additions_count }}">
+                            ✅ Dodane zajęcia ({{ latest_changes.additions_count }}) <span class="collapse-icon"></span>
+                        </h3>
+                        <div class="changes-table-wrapper collapsible-body" id="additions-body">
                             <table class="changes-table additions-table">
                                 <thead>
                                     <tr>
@@ -128,8 +130,10 @@
                 
                 {% if latest_changes.removals %}
                     <div class="changes-section">
-                        <h3 class="changes-title removals-title">❌ Usunięte zajęcia ({{ latest_changes.removals_count }})</h3>
-                        <div class="changes-table-wrapper">
+                        <h3 class="changes-title removals-title collapsible-header" data-target="removals-body" data-count="{{ latest_changes.removals_count }}">
+                            ❌ Usunięte zajęcia ({{ latest_changes.removals_count }}) <span class="collapse-icon"></span>
+                        </h3>
+                        <div class="changes-table-wrapper collapsible-body" id="removals-body">
                             <table class="changes-table removals-table">
                                 <thead>
                                     <tr>
@@ -249,7 +253,36 @@
                     window.location = '/';
                 }, 100);
             });
-            
+
+            // Collapsible change history sections
+            $('.collapsible-header').each(function() {
+                const count = parseInt($(this).data('count')) || 0;
+                const targetId = $(this).data('target');
+                const body = $('#' + targetId);
+                const icon = $(this).find('.collapse-icon');
+
+                if (count > 5) {
+                    body.hide();
+                    icon.text(' ▼');
+                } else {
+                    body.show();
+                    icon.text(' ▲');
+                }
+            });
+
+            $(document).on('click', '.collapsible-header', function() {
+                const targetId = $(this).data('target');
+                const body = $('#' + targetId);
+                const icon = $(this).find('.collapse-icon');
+                if (body.is(':visible')) {
+                    body.slideUp(200);
+                    icon.text(' ▼');
+                } else {
+                    body.slideDown(200);
+                    icon.text(' ▲');
+                }
+            });
+
             // Table sorting
             let sortColumn = -1;
             let sortAscending = true;

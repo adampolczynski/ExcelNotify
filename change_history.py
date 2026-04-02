@@ -34,7 +34,11 @@ class ScheduleChangeTracker:
         # Create comparable keys (date, class, subject)
         def make_key(row):
             return (row["date"], row["class"], row["subject"])
-        
+
+        # Exclude rows with no group (meant for all students - not group-specific changes)
+        old_df = old_df[old_df["class"].astype(str).str.strip() != ""]
+        new_df = new_df[new_df["class"].astype(str).str.strip() != ""]
+
         old_keys = set(old_df.apply(make_key, axis=1))
         new_keys = set(new_df.apply(make_key, axis=1))
         

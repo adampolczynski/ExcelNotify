@@ -447,6 +447,19 @@ select:focus {
   font-weight: 600;
 }
 
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-header:hover {
+  opacity: 0.85;
+}
+
+.collapse-icon {
+  font-style: normal;
+}
+
 .additions-title {
   background: #d4edda;
   color: #155724;
