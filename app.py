@@ -317,8 +317,10 @@ def index():
         with open(mtime_file, 'w') as f:
             f.write(str(excel_mtime))
     
-    # Get changes for display
+    # Get changes for display — always ensure it's a list of dicts
     latest_changes = tracker.get_changes_for_display()
+    if isinstance(latest_changes, dict):
+        latest_changes = [latest_changes]
 
     return render_template(
         "index.html",
