@@ -94,71 +94,99 @@
     {% if latest_changes %}
         <div class="container">
             <div class="card changes-card">
-                <h2>📋 Historia zmian <span class="changes-timestamp">({{ latest_changes.timestamp }})</span></h2>
-                
-                {% if latest_changes.additions %}
-                    <div class="changes-section">
-                        <h3 class="changes-title additions-title collapsible-header" data-target="additions-body" data-count="{{ latest_changes.additions_count }}">
-                            ✅ Dodane zajęcia ({{ latest_changes.additions_count }}) <span class="collapse-icon"></span>
-                        </h3>
-                        <div class="changes-table-wrapper collapsible-body" id="additions-body">
-                            <table class="changes-table additions-table">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Grupa</th>
-                                        <th>Czas</th>
-                                        <th>Przedmiot</th>
-                                        <th>Sala</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for row in latest_changes.additions %}
-                                        <tr>
-                                            <td class="col-nowrap">{{ row.date }}</td>
-                                            <td class="col-nowrap">{{ row.class }}</td>
-                                            <td class="col-nowrap">{{ row.start_time }}</td>
-                                            <td>{{ row.subject }}</td>
-                                            <td>{{ row.room }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                <h2>📋 Historia zmian</h2>
+
+                {% for entry in latest_changes %}
+                    <div class="change-entry">
+                        <div class="change-entry-header">
+                            🕐 {{ entry.timestamp }}
+                            &mdash;
+                            {% if entry.additions_count > 0 %}+{{ entry.additions_count }} dodanych{% endif %}
+                            {% if entry.removals_count > 0 %}&nbsp;-{{ entry.removals_count }} usuniętych{% endif %}
+                            {% if entry.modifications_count > 0 %}&nbsp;~{{ entry.modifications_count }} zmian{% endif %}
                         </div>
+
+                        {% if entry.additions %}
+                            <div class="changes-section">
+                                <h3 class="changes-title additions-title collapsible-header" data-target="additions-{{ loop.index }}" data-count="{{ entry.additions_count }}">
+                                    ✅ Dodane zajęcia ({{ entry.additions_count }}) <span class="collapse-icon"></span>
+                                </h3>
+                                <div class="changes-table-wrapper collapsible-body" id="additions-{{ loop.index }}">
+                                    <table class="changes-table additions-table">
+                                        <thead>
+                                            <tr><th>Data</th><th>Grupa</th><th>Czas</th><th>Przedmiot</th><th>Sala</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in entry.additions %}
+                                                <tr>
+                                                    <td class="col-nowrap">{{ row.date }}</td>
+                                                    <td class="col-nowrap">{{ row.class }}</td>
+                                                    <td class="col-nowrap">{{ row.start_time }}</td>
+                                                    <td>{{ row.subject }}</td>
+                                                    <td>{{ row.room }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if entry.removals %}
+                            <div class="changes-section">
+                                <h3 class="changes-title removals-title collapsible-header" data-target="removals-{{ loop.index }}" data-count="{{ entry.removals_count }}">
+                                    ❌ Usunięte zajęcia ({{ entry.removals_count }}) <span class="collapse-icon"></span>
+                                </h3>
+                                <div class="changes-table-wrapper collapsible-body" id="removals-{{ loop.index }}">
+                                    <table class="changes-table removals-table">
+                                        <thead>
+                                            <tr><th>Data</th><th>Grupa</th><th>Czas</th><th>Przedmiot</th><th>Sala</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in entry.removals %}
+                                                <tr>
+                                                    <td class="col-nowrap">{{ row.date }}</td>
+                                                    <td class="col-nowrap">{{ row.class }}</td>
+                                                    <td class="col-nowrap">{{ row.start_time }}</td>
+                                                    <td>{{ row.subject }}</td>
+                                                    <td>{{ row.room }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if entry.modifications %}
+                            <div class="changes-section">
+                                <h3 class="changes-title modifications-title collapsible-header" data-target="modifications-{{ loop.index }}" data-count="{{ entry.modifications_count }}">
+                                    ✏️ Zmodyfikowane zajęcia ({{ entry.modifications_count }}) <span class="collapse-icon"></span>
+                                </h3>
+                                <div class="changes-table-wrapper collapsible-body" id="modifications-{{ loop.index }}">
+                                    <table class="changes-table modifications-table">
+                                        <thead>
+                                            <tr><th>Data</th><th>Grupa</th><th>Przedmiot</th><th>Pole</th><th>Poprzednio</th><th>Teraz</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for mod in entry.modifications %}
+                                                <tr>
+                                                    <td class="col-nowrap">{{ mod.date }}</td>
+                                                    <td class="col-nowrap">{{ mod.class }}</td>
+                                                    <td>{{ mod.subject }}</td>
+                                                    <td class="col-nowrap">{{ mod.field }}</td>
+                                                    <td class="mod-old">{{ mod.old_value }}</td>
+                                                    <td class="mod-new">{{ mod.new_value }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
-                {% endif %}
-                
-                {% if latest_changes.removals %}
-                    <div class="changes-section">
-                        <h3 class="changes-title removals-title collapsible-header" data-target="removals-body" data-count="{{ latest_changes.removals_count }}">
-                            ❌ Usunięte zajęcia ({{ latest_changes.removals_count }}) <span class="collapse-icon"></span>
-                        </h3>
-                        <div class="changes-table-wrapper collapsible-body" id="removals-body">
-                            <table class="changes-table removals-table">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Grupa</th>
-                                        <th>Czas</th>
-                                        <th>Przedmiot</th>
-                                        <th>Sala</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for row in latest_changes.removals %}
-                                        <tr>
-                                            <td class="col-nowrap">{{ row.date }}</td>
-                                            <td class="col-nowrap">{{ row.class }}</td>
-                                            <td class="col-nowrap">{{ row.start_time }}</td>
-                                            <td>{{ row.subject }}</td>
-                                            <td>{{ row.room }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                {% endif %}
+                    {% if not loop.last %}<hr class="change-entry-divider">{% endif %}
+                {% endfor %}
             </div>
         </div>
     {% endif %}

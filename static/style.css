@@ -518,6 +518,45 @@ select:focus {
   background: #ffe8e8;
 }
 
+.modifications-title {
+  background: #fff3cd;
+  color: #856404;
+  border-left: 4px solid #ffc107;
+}
+
+.modifications-table tbody tr {
+  background: #fffdf0;
+}
+
+.modifications-table tbody tr:hover {
+  background: #fff8d6;
+}
+
+.mod-old {
+  color: #dc3545;
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.mod-new {
+  color: #198754;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.change-entry-header {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 12px;
+  padding: 4px 0;
+}
+
+.change-entry-divider {
+  border: none;
+  border-top: 1px dashed #ccc;
+  margin: 20px 0;
+}
+
 .changes-timestamp {
   font-size: 0.8rem;
   color: #888;

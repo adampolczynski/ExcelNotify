@@ -201,7 +201,12 @@ def load_previous_schedule():
     try:
         prev_file = os.path.join(SOURCE_DIR, "schedule_previous.csv")
         if os.path.exists(prev_file):
-            return pd.read_csv(prev_file)
+            df = pd.read_csv(prev_file)
+            # Normalize same as load_schedule_data to avoid phantom changes from type differences
+            for col in ["class", "subject", "date", "start_time", "room", "instructor", "title", "method"]:
+                if col in df.columns:
+                    df[col] = df[col].fillna("").astype(str).str.strip().replace("nan", "")
+            return df
     except:
         pass
     return None
