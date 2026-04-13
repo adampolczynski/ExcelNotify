@@ -69,17 +69,61 @@ def get_unique_groups(all_classes):
     return sorted(unique_primary_groups, key=lambda x: (len(x), x))
 
 
-def get_excel_file():
-    """Find and return the newest .xlsx or .xls file in source/ directory."""
+def _load_semester_names():
+    """Load semester display names from semester_names.json."""
+    config_path = os.path.join(os.path.dirname(__file__), "semester_names.json")
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            import json
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def get_available_semesters():
+    """Return list of available semesters as [(prefix, display_name, filepath), ...] sorted by prefix.
+    Only includes files whose prefix matches an entry in semester_names.json.
+    """
+    files = glob.glob(os.path.join(SOURCE_DIR, "*.xlsx")) + glob.glob(os.path.join(SOURCE_DIR, "*.xls"))
+    names_map = _load_semester_names()  # only configured prefixes are valid
+    # Build a lookup: prefix -> filepath (last-modified wins if duplicates)
+    prefix_to_file = {}
+    for f in files:
+        basename = os.path.basename(f)
+        # Match against known keys (filenames have dots in date, can't split on '.')
+        prefix = next((k for k in names_map if basename.startswith(k)), None)
+        if prefix is None:
+            continue  # skip files not in config (e.g. legacy schedule.xlsx)
+        # If duplicate prefix, keep the most recently modified file
+        if prefix not in prefix_to_file or os.path.getmtime(f) > os.path.getmtime(prefix_to_file[prefix]):
+            prefix_to_file[prefix] = f
+    # Build result in JSON key order (preserves user-defined order)
+    semesters = []
+    for prefix, display in names_map.items():
+        if prefix in prefix_to_file:
+            semesters.append((prefix, display, prefix_to_file[prefix]))
+    return semesters
+
+
+def get_excel_file(semester_prefix=None):
+    """Find and return an Excel file from source/ directory.
+    If semester_prefix given, return the first file whose name starts with that prefix.
+    Otherwise return the newest file.
+    """
     files = glob.glob(os.path.join(SOURCE_DIR, "*.xlsx")) + glob.glob(os.path.join(SOURCE_DIR, "*.xls"))
     if not files:
         return None
-    return max(files, key=os.path.getmtime)  # Return the most recently modified file
+    if semester_prefix:
+        for f in sorted(files, key=os.path.getmtime, reverse=True):
+            if os.path.basename(f).startswith(semester_prefix):
+                return f
+        return None  # not found
+    return max(files, key=os.path.getmtime)  # default: most recently modified
 
 
-def load_schedule_data():
+def load_schedule_data(semester_prefix=None):
     """Load schedule data from source/ Excel file."""
-    excel_file = get_excel_file()
+    excel_file = get_excel_file(semester_prefix)
     if not excel_file:
         return None, "❌ Nie znaleziono pliku Excel w katalogu source/"
 
@@ -203,27 +247,40 @@ def get_last_update_time():
         return None
 
 
-def save_previous_schedule(df):
+def get_download_failure():
+    """Return failure time string if last download failed, else None."""
+    import json as _json
+    status_file = os.path.join(os.path.dirname(__file__), "download_status.json")
+    try:
+        with open(status_file, 'r', encoding='utf-8') as f:
+            data = _json.load(f)
+        if not data.get('success', True):
+            return data.get('time', '')
+    except Exception:
+        pass
+    return None
+
+
+def save_previous_schedule(df, prefix="default"):
     """Save current schedule for comparison next time"""
     try:
-        prev_file = os.path.join(SOURCE_DIR, "schedule_previous.csv")
+        prev_file = os.path.join(SOURCE_DIR, f"schedule_previous_{prefix}.csv")
         df.to_csv(prev_file, index=False)
-    except:
-        pass  # Silently fail if can't save
+    except Exception:
+        pass
 
 
-def load_previous_schedule():
+def load_previous_schedule(prefix="default"):
     """Load previously saved schedule for comparison"""
     try:
-        prev_file = os.path.join(SOURCE_DIR, "schedule_previous.csv")
+        prev_file = os.path.join(SOURCE_DIR, f"schedule_previous_{prefix}.csv")
         if os.path.exists(prev_file):
             df = pd.read_csv(prev_file)
-            # Normalize same as load_schedule_data to avoid phantom changes from type differences
             for col in ["class", "subject", "date", "start_time", "room", "instructor", "title", "method"]:
                 if col in df.columns:
                     df[col] = df[col].fillna("").astype(str).str.strip().replace("nan", "")
             return df
-    except:
+    except Exception:
         pass
     return None
 
@@ -259,27 +316,36 @@ def download_schedule_file():
 
 @app.route("/", methods=["GET"])
 def index():
-    df, error = load_schedule_data()
-    
+    # Semester selection
+    available_semesters = get_available_semesters()  # [(prefix, display_name, filepath), ...]
+    semester_param = request.args.get("semester", "")
+    # Default to first available semester if none specified
+    if not semester_param and available_semesters:
+        semester_param = available_semesters[0][0]
+
+    df, error = load_schedule_data(semester_param if semester_param else None)
+
     if error:
-        return render_template("index.html", error=error, classes=[], table_data=[])
-    
+        return render_template("index.html", error=error, classes=[], table_data=[],
+                               available_semesters=available_semesters,
+                               current_semester=semester_param)
+
     # Get all unique classes, sorted
     all_classes = sorted(df["class"].unique().tolist())
-    
+
     # Get unique individual groups for the filter dropdown
     unique_groups = get_unique_groups(all_classes)
-    
+
     # Get selected groups from query params (default: empty/none)
     selected_groups_param = request.args.get("groups", "")
     if selected_groups_param:
         selected_groups = [g.strip() for g in selected_groups_param.split(",") if g.strip()]
     else:
-        selected_groups = []  # Default: empty - user must select
+        selected_groups = []
 
     # Get date range from query params (default: today to today+2 days)
     default_from = date.today()
-    default_to = date.today() + timedelta(days=2)
+    default_to = date.today() + timedelta(days=7)
     date_from_param = request.args.get("date_from", str(default_from))
     date_to_param = request.args.get("date_to", str(default_to))
 
@@ -290,50 +356,45 @@ def index():
         date_from = default_from
         date_to = default_to
 
-    # Filter data - if groups are selected, show classes that contain any of those groups
+    # Filter data
     if selected_groups:
-        # Find all classes where any group matches the selected primary groups
         matching_classes = []
         for class_str in all_classes:
-            if not class_str:  # empty = all groups, always include
+            if not class_str:
                 continue
             class_groups = extract_individual_groups(class_str)
             for class_group in class_groups:
                 if extract_primary_group(class_group) in selected_groups:
                     matching_classes.append(class_str)
-                    break  # Don't add the same class twice
+                    break
         date_mask = (df["date"] >= str(date_from)) & (df["date"] <= str(date_to))
         df_filtered = df[
             (df["class"].isin(matching_classes) | (df["class"] == "")) &
             date_mask
         ]
     else:
-        # No groups selected - show empty
         df_filtered = df[df["class"].isin([])]
-    
-    # Sort by date and start_time
+
     df_filtered = df_filtered.sort_values(by=["date", "start_time"])
-    
-    # Convert to table rows (list of dicts)
     table_data = df_filtered.to_dict(orient="records")
 
-    # Track changes from previous schedule (only when Excel file has changed)
-    tracker = ScheduleChangeTracker(os.path.join(SOURCE_DIR, "change_history.json"))
-    excel_file = os.path.join(SOURCE_DIR, "schedule.xlsx")
-    mtime_file = os.path.join(SOURCE_DIR, "last_compared.txt")
-    excel_mtime = os.path.getmtime(excel_file) if os.path.exists(excel_file) else 0
+    # Track changes — scoped per semester (separate history + previous csv per semester)
+    safe_prefix = semester_param.replace('/', '_').replace('\\', '_') if semester_param else "default"
+    tracker = ScheduleChangeTracker(os.path.join(SOURCE_DIR, f"change_history_{safe_prefix}.json"))
+    excel_file = get_excel_file(semester_param if semester_param else None)
+    mtime_file = os.path.join(SOURCE_DIR, f"last_compared_{safe_prefix}.txt")
+    excel_mtime = os.path.getmtime(excel_file) if excel_file and os.path.exists(excel_file) else 0
     try:
         last_compared = float(open(mtime_file).read().strip())
-    except:
+    except Exception:
         last_compared = 0
     if excel_mtime > last_compared:
-        previous_df = load_previous_schedule()
+        previous_df = load_previous_schedule(safe_prefix)
         tracker.compare_schedules(previous_df, df)
-        save_previous_schedule(df)
+        save_previous_schedule(df, safe_prefix)
         with open(mtime_file, 'w') as f:
             f.write(str(excel_mtime))
-    
-    # Get changes for display — always ensure it's a list of dicts
+
     latest_changes = tracker.get_changes_for_display()
     if isinstance(latest_changes, dict):
         latest_changes = [latest_changes]
@@ -347,6 +408,9 @@ def index():
         table_data=table_data,
         last_update_time=get_last_update_time(),
         latest_changes=latest_changes,
+        available_semesters=available_semesters,
+        current_semester=semester_param,
+        download_failure_time=get_download_failure(),
     )
 
 

@@ -1,394 +1,328 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PAM Pielęgniarstwo - Plan Zajęć</title>
+    <title>{% if current_semester and available_semesters %}{% for p,d,f in available_semesters %}{% if p == current_semester %}{{ d }} — {% endif %}{% endfor %}{% endif %}Plan Zajęć · PAM Pielęgniarstwo</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Apply stored theme before paint to avoid flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('pam-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 </head>
 <body>
-    <div class="container">
-        <div class="topbar">
-            <h1>📅 PAM Pielęgniarstwo - Plan Zajęć{% if last_update_time %} (ostatnia aktualizacja {{ last_update_time }}){% endif %}</h1>
+
+<!-- ── Site header + tabs ─────────────────────────────────── -->
+<header class="site-header">
+    <div class="site-header-inner">
+        <div class="site-header-top">
+            <div class="site-title">Plan Zajęć &nbsp;·&nbsp; <span>Pielęgniarstwo PAM</span></div>
+            <div class="header-actions">
+                <span class="author-credit">by Adam Połczyński</span>
+                <a href="https://wa.me/48786189122" target="_blank" rel="noopener noreferrer" class="btn-whatsapp" title="Zgłoś problem przez WhatsApp">💬 <span>Zgłoś problem</span></a>
+                <button id="theme-toggle" class="theme-toggle" title="Zmień motyw" aria-label="Zmień motyw">
+                    <span class="icon-moon">🌙</span>
+                    <span class="icon-sun">☀️</span>
+                </button>
+            </div>
         </div>
-        
-        <div class="card filters-card">
-            <h2>Filtry</h2>
-            
-            <div class="filter-group">
-                <label for="groups">Grupy:</label>
-                <select id="groups" multiple="multiple" style="width: 100%;">
+        {% if available_semesters %}
+        <div class="tabs-scroll-container">
+            <button class="tabs-arrow tabs-arrow-left" id="tabs-left" aria-label="Przewiń w lewo">&#8249;</button>
+            <nav class="semester-tabs" id="semester-tabs">
+                {% for prefix, display, filepath in available_semesters %}
+                <a href="/?semester={{ prefix }}&date_from={{ date_from }}&date_to={{ date_to }}"
+                   class="semester-tab {% if prefix == current_semester %}active{% endif %}">
+                    {{ display }}
+                </a>
+                {% endfor %}
+            </nav>
+            <button class="tabs-arrow tabs-arrow-right" id="tabs-right" aria-label="Przewiń w prawo">&#8250;</button>
+        </div>
+        {% endif %}
+    </div>
+</header>
+
+<!-- ── Main content ───────────────────────────────────────── -->
+<main class="main-content">
+
+    <!-- Page title -->
+    <div class="page-titlebar">
+        <h1 class="page-title">
+            {% if current_semester and available_semesters %}
+                {% for p, d, f in available_semesters %}{% if p == current_semester %}{{ d }}{% endif %}{% endfor %} — Plan zajęć
+            {% else %}
+                Plan zajęć
+            {% endif %}
+        </h1>
+        {% if last_update_time %}
+        <span class="page-subtitle">aktualizacja: {{ last_update_time }}</span>
+        {% endif %}
+    </div>
+
+    <!-- Filters -->
+    <div class="card">
+        <div class="card-title">Filtry</div>
+        <div class="filter-grid">
+            <div class="filter-group filter-groups">
+                <label for="groups">Grupy</label>
+                <select id="groups" multiple="multiple" style="width:100%">
                     {% for group_name in classes %}
                         <option value="{{ group_name }}" {% if group_name in selected_classes %}selected{% endif %}>{{ group_name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="date_from">Od:</label>
-                    <input type="date" id="date_from" value="{{ date_from }}">
-                </div>
-                
-                <div class="filter-group">
-                    <label for="date_to">Do:</label>
-                    <input type="date" id="date_to" value="{{ date_to }}">
-                </div>
+            <div class="filter-group">
+                <label for="date_from">Od</label>
+                <input type="text" id="date_from" class="fp-date" value="{{ date_from }}" placeholder="YYYY-MM-DD" autocomplete="off">
             </div>
-         
-            <div class="button-row">
-                <button id="btn_clear_all" class="btn btn-danger">✕ Wyczyść filtry</button>
-                <input type="text" id="search_table" placeholder="Wyszukaj w tabeli" class="search-input">
+            <div class="filter-group">
+                <label for="date_to">Do</label>
+                <input type="text" id="date_to" class="fp-date" value="{{ date_to }}" placeholder="YYYY-MM-DD" autocomplete="off">
             </div>
         </div>
-        
-        {% if error %}
-            <div class="card error">
-                <strong>Błąd:</strong> {{ error }}
-            </div>
-        {% endif %}
-        
-        {% if not error %}
-            {% if table_data %}
-                <div class="card table-card">
-                    <h2>Plan zajęć ({{ table_data|length }} wpisów)</h2>
-                    <div class="table-wrapper">
-                        <table class="schedule-table">
-                        <thead>
-                            <tr>
-                                <th class="sortable" data-column="0">Data<span class="sort-indicator"></span></th>
-                                <th class="sortable" data-column="1">Grupa<span class="sort-indicator"></span></th>
-                                <th class="sortable" data-column="2">Godzina<span class="sort-indicator"></span></th>
-                                <th class="sortable" data-column="3">Przedmiot (metoda)<span class="sort-indicator"></span></th>
-                                <th class="sortable" data-column="4">Sala<span class="sort-indicator"></span></th>
-                                <th class="sortable" data-column="5">Prowadzący<span class="sort-indicator"></span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in table_data %}
-                                {% set has_missing = not row.room or not row.get('title', '') and not row.get('instructor', '') %}
-                                <tr {% if has_missing %}class="row-incomplete"{% endif %} data-search-text="{{ row.date }} {{ row.class }} {{ row.start_time }} {{ row.subject }}{% if row.get('method', '') %} {{ row.get('method', '') }}{% endif %} {{ row.room }} {{ row.get('title', '') }} {{ row.get('instructor', '') }}">
-                                    <td class="col-nowrap">{{ row.date }}</td>
-                                    <td class="col-nowrap"><span class="badge badge-{{ row.class[-1].lower() if row.class and row.class[-1].isalpha() else 'default' }}">{{ row.class if row.class else 'Wszystkie' }}</span></td>
-                                    <td class="col-nowrap">{{ row.start_time }}</td>
-                                    <td>{{ row.subject }}{% if row.get('method', '') %} ({{ row.get('method', '') }}){% endif %}</td>
-                                    <td>{{ row.room }}</td>
-                                    <td>{{ row.get('title', '') }}{% if row.get('title', '') and row.get('instructor', '') %} - {% endif %}{{ row.get('instructor', '') }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
-            {% else %}
-                <div class="card info">
-                    <strong>ℹ️ Wybierz grupy z listy powyżej, aby wyświetlić plan zajęć.</strong>
-                </div>
-            {% endif %}
-            
-        {% endif %}
     </div>
 
-    {% if latest_changes %}
-        <div class="container">
-            <div class="card changes-card">
-                <h2>📋 Historia zmian</h2>
+    {% if error %}
+    <div class="alert alert-error"><strong>Błąd:</strong> {{ error }}</div>
+    {% endif %}
 
-                {% for entry in latest_changes %}
-                    {% set entry_id = "entry-" ~ loop.index %}
-                    <div class="change-entry-header collapsible-header{% if not loop.first %} entry-collapsed{% endif %}"
-                         data-target="{{ entry_id }}" data-count="99">
-                        🕐 {{ entry.timestamp }}
-                        &mdash;
-                        {% if entry.additions_count|default(0) > 0 %}+{{ entry.additions_count }} dodanych{% endif %}
-                        {% if entry.removals_count|default(0) > 0 %}&nbsp;-{{ entry.removals_count }} usuniętych{% endif %}
-                        {% if entry.modifications_count|default(0) > 0 %}&nbsp;~{{ entry.modifications_count }} zmian{% endif %}
-                        <span class="collapse-icon">{% if loop.first %} ▲{% else %} ▼{% endif %}</span>
-                    </div>
+    {% if download_failure_time %}
+    <div class="alert alert-warning">⚠️ Aktualizacja planu o godzinie {{ download_failure_time }} nie powiodła się.</div>
+    {% endif %}
 
-                    <div class="change-entry collapsible-body" id="{{ entry_id }}"{% if not loop.first %} style="display:none"{% endif %}>
-
-                        {% if entry.additions|default([]) %}
-                            <div class="changes-section">
-                                <h3 class="changes-title additions-title collapsible-header" data-target="additions-{{ loop.index }}" data-count="{{ entry.additions_count|default(0) }}">
-                                    ✅ Dodane zajęcia ({{ entry.additions_count|default(0) }}) <span class="collapse-icon"></span>
-                                </h3>
-                                <div class="changes-table-wrapper collapsible-body" id="additions-{{ loop.index }}">
-                                    <table class="changes-table additions-table">
-                                        <thead>
-                                            <tr><th>Data</th><th>Grupa</th><th>Czas</th><th>Przedmiot</th><th>Sala</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for row in entry.additions %}
-                                                <tr>
-                                                    <td class="col-nowrap">{{ row.date }}</td>
-                                                    <td class="col-nowrap">{{ row.class }}</td>
-                                                    <td class="col-nowrap">{{ row.start_time }}</td>
-                                                    <td>{{ row.subject }}</td>
-                                                    <td>{{ row.room }}</td>
-                                                </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if entry.removals|default([]) %}
-                            <div class="changes-section">
-                                <h3 class="changes-title removals-title collapsible-header" data-target="removals-{{ loop.index }}" data-count="{{ entry.removals_count|default(0) }}">
-                                    ❌ Usunięte zajęcia ({{ entry.removals_count|default(0) }}) <span class="collapse-icon"></span>
-                                </h3>
-                                <div class="changes-table-wrapper collapsible-body" id="removals-{{ loop.index }}">
-                                    <table class="changes-table removals-table">
-                                        <thead>
-                                            <tr><th>Data</th><th>Grupa</th><th>Czas</th><th>Przedmiot</th><th>Sala</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for row in entry.removals %}
-                                                <tr>
-                                                    <td class="col-nowrap">{{ row.date }}</td>
-                                                    <td class="col-nowrap">{{ row.class }}</td>
-                                                    <td class="col-nowrap">{{ row.start_time }}</td>
-                                                    <td>{{ row.subject }}</td>
-                                                    <td>{{ row.room }}</td>
-                                                </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if entry.modifications|default([]) %}
-                            <div class="changes-section">
-                                <h3 class="changes-title modifications-title collapsible-header" data-target="modifications-{{ loop.index }}" data-count="{{ entry.modifications_count|default(0) }}">
-                                    ✏️ Zmodyfikowane zajęcia ({{ entry.modifications_count|default(0) }}) <span class="collapse-icon"></span>
-                                </h3>
-                                <div class="changes-table-wrapper collapsible-body" id="modifications-{{ loop.index }}">
-                                    <table class="changes-table modifications-table">
-                                        <thead>
-                                            <tr><th>Data</th><th>Grupa</th><th>Przedmiot</th><th>Pole</th><th>Poprzednio</th><th>Teraz</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for mod in entry.modifications %}
-                                                <tr>
-                                                    <td class="col-nowrap">{{ mod.date }}</td>
-                                                    <td class="col-nowrap">{{ mod.class }}</td>
-                                                    <td>{{ mod.subject }}</td>
-                                                    <td class="col-nowrap">{{ mod.field }}</td>
-                                                    <td class="mod-old">{{ mod.old_value }}</td>
-                                                    <td class="mod-new">{{ mod.new_value }}</td>
-                                                </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        {% endif %}
-                    </div>
-                    {% if not loop.last %}<hr class="change-entry-divider">{% endif %}
-                {% endfor %}
+    {% if not error %}
+        {% if table_data %}
+        <div class="card">
+            <div class="table-header">
+                <div class="card-title" style="margin-bottom:0">Zajęcia</div>
+                <span class="table-count">{{ table_data|length }} wpisów</span>
+            </div>
+            <div class="table-wrapper">
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-column="0">Data<span class="sort-indicator"></span></th>
+                            <th class="sortable" data-column="1">Grupa<span class="sort-indicator"></span></th>
+                            <th class="sortable" data-column="2">Godzina<span class="sort-indicator"></span></th>
+                            <th class="sortable" data-column="3">Przedmiot<span class="sort-indicator"></span></th>
+                            <th class="sortable" data-column="4">Sala<span class="sort-indicator"></span></th>
+                            <th class="sortable" data-column="5">Prowadzący<span class="sort-indicator"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in table_data %}
+                        {% set has_missing = not row.room or not row.get('title','') and not row.get('instructor','') %}
+                        <tr {% if has_missing %}class="row-incomplete"{% endif %}
+                            data-search-text="{{ row.date }} {{ row.class }} {{ row.start_time }} {{ row.subject }}{% if row.get('method','') %} {{ row.get('method','') }}{% endif %} {{ row.room }} {{ row.get('title','') }} {{ row.get('instructor','') }}">
+                            <td class="col-nowrap">{{ row.date }}</td>
+                            <td class="col-nowrap"><span class="badge badge-{{ row.class[-1].lower() if row.class and row.class[-1].isalpha() else 'default' }}">{{ row.class if row.class else 'Wszystkie' }}</span></td>
+                            <td class="col-nowrap">{{ row.start_time }}</td>
+                            <td>{{ row.subject }}{% if row.get('method','') %} <span style="color:var(--text-muted);font-size:0.82em">({{ row.get('method','') }})</span>{% endif %}</td>
+                            <td>{{ row.room }}</td>
+                            <td>{{ row.get('title','') }}{% if row.get('title','') and row.get('instructor','') %} — {% endif %}{{ row.get('instructor','') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
+        {% else %}
+        <div class="alert alert-info">Wybierz grupy z listy powyżej, aby wyświetlić plan zajęć.</div>
+        {% endif %}
     {% endif %}
-    
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            // Initialize Select2
-            $('#groups').select2({
-                placeholder: 'Wybierz grupy...',
-                allowClear: true
-            });
-            
-            // Initialize jQuery UI Datepicker
-            $('#date_from').datepicker({
-                dateFormat: 'yy-mm-dd',
-                onClose: updateFilters
-            });
-            
-            $('#date_to').datepicker({
-                dateFormat: 'yy-mm-dd',
-                onClose: updateFilters
-            });
-            
-            // Update on filter change
-            function updateFilters() {
-                const groups = $('#groups').val() || [];
-                const dateFrom = $('#date_from').val();
-                const dateTo = $('#date_to').val();
-                
-                const params = new URLSearchParams();
-                if (groups.length > 0) {
-                    params.append('groups', groups.join(','));
-                }
-                if (dateFrom) {
-                    params.append('date_from', dateFrom);
-                }
-                if (dateTo) {
-                    params.append('date_to', dateTo);
-                }
-                
-                window.location = '/?' + params.toString();
-            }
-            
-            $('#groups').on('change', updateFilters);
-            
-            // Date navigation buttons
-            function addDays(dateStr, days) {
-                const date = new Date(dateStr);
-                date.setDate(date.getDate() + days);
-                return date.toISOString().split('T')[0];
-            }
-            
-            $('#btn_prev_from').on('click', function() {
-                const currentDate = $('#date_from').val();
-                if (currentDate) {
-                    $('#date_from').val(addDays(currentDate, -1));
-                    updateFilters();
-                }
-            });
-            
-            $('#btn_next_from').on('click', function() {
-                const currentDate = $('#date_from').val();
-                if (currentDate) {
-                    $('#date_from').val(addDays(currentDate, 1));
-                    updateFilters();
-                }
-            });
-            
-            $('#btn_prev_to').on('click', function() {
-                const currentDate = $('#date_to').val();
-                if (currentDate) {
-                    $('#date_to').val(addDays(currentDate, -1));
-                    updateFilters();
-                }
-            });
-            
-            $('#btn_next_to').on('click', function() {
-                const currentDate = $('#date_to').val();
-                if (currentDate) {
-                    $('#date_to').val(addDays(currentDate, 1));
-                    updateFilters();
-                }
-            });
-            
-            // Clear all button - clears selection AND navigates
-            $('#btn_clear_all').on('click', function() {
-                $('#groups').val(null).trigger('change');
-                setTimeout(function() {
-                    window.location = '/';
-                }, 100);
-            });
 
-            // Collapsible change history sections
-            $('.collapsible-header').each(function() {
-                const count = parseInt($(this).data('count')) || 0;
-                const targetId = $(this).data('target');
-                const body = $('#' + targetId);
-                const icon = $(this).find('.collapse-icon');
+    <!-- Change history -->
+    {% if latest_changes %}
+    <div class="card" style="margin-top:4px">
+        <div class="card-title">Historia zmian</div>
+        {% for entry in latest_changes %}
+            {% set entry_id = "entry-" ~ loop.index %}
+            <div class="change-entry-header collapsible-header{% if not loop.first %} entry-collapsed{% endif %}"
+                 data-target="{{ entry_id }}" data-count="99">
+                <span class="ch-ts">{{ entry.timestamp }}</span>
+                {% if entry.additions_count|default(0) > 0 %}<span class="change-pill change-pill-add">+{{ entry.additions_count }} dodane</span>{% endif %}
+                {% if entry.removals_count|default(0) > 0 %}<span class="change-pill change-pill-del">−{{ entry.removals_count }} usunięte</span>{% endif %}
+                {% if entry.modifications_count|default(0) > 0 %}<span class="change-pill change-pill-mod">~{{ entry.modifications_count }} zmiany</span>{% endif %}
+                <span class="collapse-icon">{% if loop.first %}▲{% else %}▼{% endif %}</span>
+            </div>
+            <div class="change-entry collapsible-body" id="{{ entry_id }}"{% if not loop.first %} style="display:none"{% endif %}>
+                {% if entry.additions|default([]) %}
+                <div class="changes-section">
+                    <h3 class="changes-title additions-title collapsible-header" data-target="additions-{{ loop.index }}" data-count="{{ entry.additions_count|default(0) }}">
+                        ✓ Dodane zajęcia ({{ entry.additions_count|default(0) }})<span class="collapse-icon"></span>
+                    </h3>
+                    <div class="changes-table-wrapper collapsible-body" id="additions-{{ loop.index }}">
+                        <table class="changes-table additions-table">
+                            <thead><tr><th>Data</th><th>Grupa</th><th>Czas</th><th>Przedmiot</th><th>Sala</th></tr></thead>
+                            <tbody>{% for row in entry.additions %}<tr><td class="col-nowrap">{{ row.date }}</td><td class="col-nowrap">{{ row.class }}</td><td class="col-nowrap">{{ row.start_time }}</td><td>{{ row.subject }}</td><td>{{ row.room }}</td></tr>{% endfor %}</tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                {% if entry.removals|default([]) %}
+                <div class="changes-section">
+                    <h3 class="changes-title removals-title collapsible-header" data-target="removals-{{ loop.index }}" data-count="{{ entry.removals_count|default(0) }}">
+                        ✗ Usunięte zajęcia ({{ entry.removals_count|default(0) }})<span class="collapse-icon"></span>
+                    </h3>
+                    <div class="changes-table-wrapper collapsible-body" id="removals-{{ loop.index }}">
+                        <table class="changes-table removals-table">
+                            <thead><tr><th>Data</th><th>Grupa</th><th>Czas</th><th>Przedmiot</th><th>Sala</th></tr></thead>
+                            <tbody>{% for row in entry.removals %}<tr><td class="col-nowrap">{{ row.date }}</td><td class="col-nowrap">{{ row.class }}</td><td class="col-nowrap">{{ row.start_time }}</td><td>{{ row.subject }}</td><td>{{ row.room }}</td></tr>{% endfor %}</tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                {% if entry.modifications|default([]) %}
+                <div class="changes-section">
+                    <h3 class="changes-title modifications-title collapsible-header" data-target="modifications-{{ loop.index }}" data-count="{{ entry.modifications_count|default(0) }}">
+                        ~ Zmodyfikowane zajęcia ({{ entry.modifications_count|default(0) }})<span class="collapse-icon"></span>
+                    </h3>
+                    <div class="changes-table-wrapper collapsible-body" id="modifications-{{ loop.index }}">
+                        <table class="changes-table modifications-table">
+                            <thead><tr><th>Data</th><th>Grupa</th><th>Przedmiot</th><th>Pole</th><th>Poprzednio</th><th>Teraz</th></tr></thead>
+                            <tbody>{% for mod in entry.modifications %}<tr><td class="col-nowrap">{{ mod.date }}</td><td class="col-nowrap">{{ mod.class }}</td><td>{{ mod.subject }}</td><td class="col-nowrap">{{ mod.field }}</td><td class="mod-old">{{ mod.old_value }}</td><td class="mod-new">{{ mod.new_value }}</td></tr>{% endfor %}</tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if not loop.last %}<hr class="change-entry-divider">{% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
 
-                if (count > 5) {
-                    body.hide();
-                    icon.text(' ▼');
-                } else {
-                    body.show();
-                    icon.text(' ▲');
-                }
-            });
+</main>
 
-            $(document).on('click', '.collapsible-header', function() {
-                const targetId = $(this).data('target');
-                const body = $('#' + targetId);
-                const icon = $(this).find('.collapse-icon');
-                if (body.is(':visible')) {
-                    body.slideUp(200);
-                    icon.text(' ▼');
-                } else {
-                    body.slideDown(200);
-                    icon.text(' ▲');
-                }
-            });
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/pl.js"></script>
+<script>
+$(document).ready(function () {
 
-            // Table sorting
-            let sortColumn = -1;
-            let sortAscending = true;
-            
-            // Function to sort table
-            function sortTable(columnIndex, ascending) {
-                const table = $('.schedule-table');
-                const tbody = table.find('tbody');
-                const rows = tbody.find('tr').toArray();
-                
-                rows.sort(function(rowA, rowB) {
-                    const cellA = $(rowA).find('td').eq(columnIndex).text().trim().toLowerCase();
-                    const cellB = $(rowB).find('td').eq(columnIndex).text().trim().toLowerCase();
-                    
-                    // Try numeric sort first
-                    const numA = parseFloat(cellA.replace(/[^0-9.-]/g, ''));
-                    const numB = parseFloat(cellB.replace(/[^0-9.-]/g, ''));
-                    
-                    let comparison = 0;
-                    if (!isNaN(numA) && !isNaN(numB)) {
-                        comparison = numA - numB;
-                    } else {
-                        comparison = cellA.localeCompare(cellB, 'pl');
-                    }
-                    
-                    return ascending ? comparison : -comparison;
-                });
-                
-                // Re-append sorted rows
-                $.each(rows, function() {
-                    tbody.append(this);
-                });
-            }
-            
-            // Apply default sorting by date (column 0) on page load
-            if ($('.schedule-table tbody tr').length > 0) {
-                sortColumn = 0;
-                sortAscending = true;
-                sortTable(0, true);
-                $('.schedule-table th[data-column="0"] .sort-indicator').text(' ▲');
-            }
-            
-            $('.schedule-table th.sortable').on('click', function() {
-                const columnIndex = $(this).data('column');
-                
-                // Toggle ascending/descending if clicking the same column
-                if (sortColumn === columnIndex) {
-                    sortAscending = !sortAscending;
-                } else {
-                    sortColumn = columnIndex;
-                    sortAscending = true;
-                }
-                
-                // Update sort indicators
-                $('.schedule-table th .sort-indicator').text('');
-                $(this).find('.sort-indicator').text(sortAscending ? ' ▲' : ' ▼');
-                
-                // Sort the table
-                sortTable(columnIndex, sortAscending);
-            });
-            
-            // Table search/filter
-            $('#search_table').on('keyup', function() {
-                const searchText = $(this).val().toLowerCase();
-                $('.schedule-table tbody tr').each(function() {
-                    const rowText = $(this).data('search-text').toLowerCase();
-                    if (searchText === '' || rowText.includes(searchText)) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            });
+    // ── Theme toggle ────────────────────────────────────────
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('pam-theme', t);
+    }
+    // Ensure stored theme is applied (inline script already did it, this syncs)
+    applyTheme(localStorage.getItem('pam-theme') || 'dark');
+
+    $('#theme-toggle').on('click', function () {
+        var current = document.documentElement.getAttribute('data-theme');
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // ── Tab scroll arrows ───────────────────────────────────
+    var $tabs = $('#semester-tabs');
+    var tabsEl = $tabs[0];
+
+    function updateArrows() {
+        if (!tabsEl) return;
+        var sl = tabsEl.scrollLeft;
+        var maxScroll = tabsEl.scrollWidth - tabsEl.clientWidth;
+        $('#tabs-left').toggleClass('visible', sl > 4);
+        $('#tabs-right').toggleClass('visible', sl < maxScroll - 4);
+    }
+
+    if (tabsEl) {
+        updateArrows();
+        $tabs.on('scroll', updateArrows);
+        $(window).on('resize', updateArrows);
+
+        // Scroll active tab into view
+        var $active = $tabs.find('.semester-tab.active');
+        if ($active.length) {
+            tabsEl.scrollLeft = $active[0].offsetLeft - 40;
+            setTimeout(updateArrows, 50);
+        }
+    }
+
+    $('#tabs-left').on('click', function () { $tabs.animate({ scrollLeft: tabsEl.scrollLeft - 200 }, 200, updateArrows); });
+    $('#tabs-right').on('click', function () { $tabs.animate({ scrollLeft: tabsEl.scrollLeft + 200 }, 200, updateArrows); });
+
+    // ── Select2 ─────────────────────────────────────────────
+    $('#groups').select2({ placeholder: 'Wybierz grupy...', allowClear: true });
+
+    // ── Flatpickr ────────────────────────────────────────────
+    var fpOpts = {
+        dateFormat: 'Y-m-d',
+        locale: 'pl',
+        allowInput: true,
+        disableMobile: true,
+        onChange: function () { updateFilters(); }
+    };
+    flatpickr('#date_from', fpOpts);
+    flatpickr('#date_to',   fpOpts);
+
+    // ── updateFilters ─────────────────────────────────────────
+    function updateFilters() {
+        var groups   = $('#groups').val() || [];
+        var dateFrom = $('#date_from').val();
+        var dateTo   = $('#date_to').val();
+        var params   = new URLSearchParams();
+        var semester = new URLSearchParams(window.location.search).get('semester');
+        if (semester)          params.append('semester',  semester);
+        if (groups.length > 0) params.append('groups',    groups.join(','));
+        if (dateFrom)          params.append('date_from', dateFrom);
+        if (dateTo)            params.append('date_to',   dateTo);
+        window.location = '/?' + params.toString();
+    }
+    $('#groups').on('change', updateFilters);
+
+    // ── Collapsibles ──────────────────────────────────────────
+    $('.collapsible-header').each(function () {
+        var icon = $(this).find('.collapse-icon');
+        if (icon.text().trim()) return;
+        var count = parseInt($(this).data('count')) || 0;
+        var body = $('#' + $(this).data('target'));
+        if (count > 5) { body.hide(); icon.text('▼'); }
+        else           { body.show(); icon.text('▲'); }
+    });
+
+    $(document).on('click', '.collapsible-header', function () {
+        var body = $('#' + $(this).data('target'));
+        var icon = $(this).find('.collapse-icon');
+        if (body.is(':visible')) { body.slideUp(180); icon.text('▼'); }
+        else                     { body.slideDown(180); icon.text('▲'); }
+    });
+
+    // ── Table sorting ─────────────────────────────────────────
+    var sortColumn = -1, sortAscending = true;
+    function sortTable(col, asc) {
+        var tbody = $('.schedule-table tbody');
+        var rows  = tbody.find('tr').toArray();
+        rows.sort(function (a, b) {
+            var ca = $(a).find('td').eq(col).text().trim().toLowerCase();
+            var cb = $(b).find('td').eq(col).text().trim().toLowerCase();
+            var na = Number(ca);
+            var nb = Number(cb);
+            var cmp = (!isNaN(na) && !isNaN(nb) && ca !== '' && cb !== '') ? (na - nb) : ca.localeCompare(cb, 'pl');
+            return asc ? cmp : -cmp;
         });
-    </script>
+        $.each(rows, function () { tbody.append(this); });
+    }
+    if ($('.schedule-table tbody tr').length > 0) {
+        sortColumn = 0; sortAscending = true;
+        sortTable(0, true);
+        $('.schedule-table th[data-column="0"] .sort-indicator').text('▲');
+    }
+    $('.schedule-table th.sortable').on('click', function () {
+        var col = $(this).data('column');
+        sortAscending = (sortColumn === col) ? !sortAscending : true;
+        sortColumn = col;
+        $('.schedule-table th .sort-indicator').text('');
+        $(this).find('.sort-indicator').text(sortAscending ? '▲' : '▼');
+        sortTable(col, sortAscending);
+    });
+
+});
+</script>
 </body>
 </html>
