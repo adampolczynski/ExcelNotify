@@ -545,10 +545,20 @@ select:focus {
 }
 
 .change-entry-header {
-  font-size: 0.85rem;
-  color: #666;
-  margin-bottom: 12px;
-  padding: 4px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #444;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.change-entry-header:hover {
+  background: #e6e6e6;
 }
 
 .change-entry-divider {

@@ -97,19 +97,23 @@
                 <h2>📋 Historia zmian</h2>
 
                 {% for entry in latest_changes %}
-                    <div class="change-entry">
-                        <div class="change-entry-header">
-                            🕐 {{ entry.timestamp }}
-                            &mdash;
-                            {% if entry.additions_count|default(0) > 0 %}+{{ entry.additions_count }} dodanych{% endif %}
-                            {% if entry.removals_count|default(0) > 0 %}&nbsp;-{{ entry.removals_count }} usuniętych{% endif %}
-                            {% if entry.modifications_count|default(0) > 0 %}&nbsp;~{{ entry.modifications_count }} zmian{% endif %}
-                        </div>
+                    {% set entry_id = "entry-" ~ loop.index %}
+                    <div class="change-entry-header collapsible-header{% if not loop.first %} entry-collapsed{% endif %}"
+                         data-target="{{ entry_id }}" data-count="99">
+                        🕐 {{ entry.timestamp }}
+                        &mdash;
+                        {% if entry.additions_count|default(0) > 0 %}+{{ entry.additions_count }} dodanych{% endif %}
+                        {% if entry.removals_count|default(0) > 0 %}&nbsp;-{{ entry.removals_count }} usuniętych{% endif %}
+                        {% if entry.modifications_count|default(0) > 0 %}&nbsp;~{{ entry.modifications_count }} zmian{% endif %}
+                        <span class="collapse-icon">{% if loop.first %} ▲{% else %} ▼{% endif %}</span>
+                    </div>
+
+                    <div class="change-entry collapsible-body" id="{{ entry_id }}"{% if not loop.first %} style="display:none"{% endif %}>
 
                         {% if entry.additions|default([]) %}
                             <div class="changes-section">
-                                <h3 class="changes-title additions-title collapsible-header" data-target="additions-{{ loop.index }}" data-count="{{ entry.additions_count }}">
-                                    ✅ Dodane zajęcia ({{ entry.additions_count }}) <span class="collapse-icon"></span>
+                                <h3 class="changes-title additions-title collapsible-header" data-target="additions-{{ loop.index }}" data-count="{{ entry.additions_count|default(0) }}">
+                                    ✅ Dodane zajęcia ({{ entry.additions_count|default(0) }}) <span class="collapse-icon"></span>
                                 </h3>
                                 <div class="changes-table-wrapper collapsible-body" id="additions-{{ loop.index }}">
                                     <table class="changes-table additions-table">
@@ -134,8 +138,8 @@
 
                         {% if entry.removals|default([]) %}
                             <div class="changes-section">
-                                <h3 class="changes-title removals-title collapsible-header" data-target="removals-{{ loop.index }}" data-count="{{ entry.removals_count }}">
-                                    ❌ Usunięte zajęcia ({{ entry.removals_count }}) <span class="collapse-icon"></span>
+                                <h3 class="changes-title removals-title collapsible-header" data-target="removals-{{ loop.index }}" data-count="{{ entry.removals_count|default(0) }}">
+                                    ❌ Usunięte zajęcia ({{ entry.removals_count|default(0) }}) <span class="collapse-icon"></span>
                                 </h3>
                                 <div class="changes-table-wrapper collapsible-body" id="removals-{{ loop.index }}">
                                     <table class="changes-table removals-table">
@@ -160,8 +164,8 @@
 
                         {% if entry.modifications|default([]) %}
                             <div class="changes-section">
-                                <h3 class="changes-title modifications-title collapsible-header" data-target="modifications-{{ loop.index }}" data-count="{{ entry.modifications_count }}">
-                                    ✏️ Zmodyfikowane zajęcia ({{ entry.modifications_count }}) <span class="collapse-icon"></span>
+                                <h3 class="changes-title modifications-title collapsible-header" data-target="modifications-{{ loop.index }}" data-count="{{ entry.modifications_count|default(0) }}">
+                                    ✏️ Zmodyfikowane zajęcia ({{ entry.modifications_count|default(0) }}) <span class="collapse-icon"></span>
                                 </h3>
                                 <div class="changes-table-wrapper collapsible-body" id="modifications-{{ loop.index }}">
                                     <table class="changes-table modifications-table">
