@@ -3,7 +3,7 @@
 # Add to crontab with: 0 7 * * * ~/webapp/download_schedule.sh
 
 # Google Drive file ID
-FILE_ID="1_lBSt7ZT9Cz57gPcT00gpJt_gJ9u6mbz"
+FILE_ID="1GV8gq9TM-dOv9pe6FRz3lXBFot53i4q4"
 DOWNLOAD_URL="https://drive.google.com/uc?export=download&id=${FILE_ID}"
 
 # Project directories - the source folder is at webapp root, not in project/

@@ -84,11 +84,27 @@ def load_schedule_data():
         return None, "❌ Nie znaleziono pliku Excel w katalogu source/"
 
     try:
-        # Read all sheets and concatenate them
         all_sheets = pd.read_excel(excel_file, sheet_name=None, header=None)
-        raw = pd.concat(all_sheets.values(), ignore_index=True)
     except Exception as e:
         return None, f"❌ Nie można odczytać pliku Excel: {e}"
+
+    # Pick only the sheet(s) that contain the most recent year's data.
+    # This avoids mixing in old archive sheets (e.g. 2025 when current year is 2026).
+    current_year = str(date.today().year)
+    recent_sheets = []
+    for sheet_df in all_sheets.values():
+        # Check if any cell in the sheet contains the current year
+        sheet_text = sheet_df.astype(str).values.flatten()
+        if any(current_year in cell for cell in sheet_text):
+            recent_sheets.append(sheet_df)
+
+    # Fall back to all sheets if none matched current year
+    sheets_to_use = recent_sheets if recent_sheets else list(all_sheets.values())
+
+    try:
+        raw = pd.concat(sheets_to_use, ignore_index=True)
+    except Exception as e:
+        return None, f"❌ Nie można połączyć arkuszy: {e}"
 
     # Keywords used to identify each canonical column
     COLUMN_KEYWORDS = {
