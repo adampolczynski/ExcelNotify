@@ -101,12 +101,12 @@
                         <div class="change-entry-header">
                             🕐 {{ entry.timestamp }}
                             &mdash;
-                            {% if entry.additions_count > 0 %}+{{ entry.additions_count }} dodanych{% endif %}
-                            {% if entry.removals_count > 0 %}&nbsp;-{{ entry.removals_count }} usuniętych{% endif %}
-                            {% if entry.modifications_count > 0 %}&nbsp;~{{ entry.modifications_count }} zmian{% endif %}
+                            {% if entry.additions_count|default(0) > 0 %}+{{ entry.additions_count }} dodanych{% endif %}
+                            {% if entry.removals_count|default(0) > 0 %}&nbsp;-{{ entry.removals_count }} usuniętych{% endif %}
+                            {% if entry.modifications_count|default(0) > 0 %}&nbsp;~{{ entry.modifications_count }} zmian{% endif %}
                         </div>
 
-                        {% if entry.additions %}
+                        {% if entry.additions|default([]) %}
                             <div class="changes-section">
                                 <h3 class="changes-title additions-title collapsible-header" data-target="additions-{{ loop.index }}" data-count="{{ entry.additions_count }}">
                                     ✅ Dodane zajęcia ({{ entry.additions_count }}) <span class="collapse-icon"></span>
@@ -132,7 +132,7 @@
                             </div>
                         {% endif %}
 
-                        {% if entry.removals %}
+                        {% if entry.removals|default([]) %}
                             <div class="changes-section">
                                 <h3 class="changes-title removals-title collapsible-header" data-target="removals-{{ loop.index }}" data-count="{{ entry.removals_count }}">
                                     ❌ Usunięte zajęcia ({{ entry.removals_count }}) <span class="collapse-icon"></span>
@@ -158,7 +158,7 @@
                             </div>
                         {% endif %}
 
-                        {% if entry.modifications %}
+                        {% if entry.modifications|default([]) %}
                             <div class="changes-section">
                                 <h3 class="changes-title modifications-title collapsible-header" data-target="modifications-{{ loop.index }}" data-count="{{ entry.modifications_count }}">
                                     ✏️ Zmodyfikowane zajęcia ({{ entry.modifications_count }}) <span class="collapse-icon"></span>

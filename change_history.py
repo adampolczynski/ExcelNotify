@@ -125,9 +125,16 @@ class ScheduleChangeTracker:
         """Return up to 5 most recent entries that have any changes."""
         result = []
         for entry in self.changes_list:
-            total = (entry.get("additions_count", 0)
-                     + entry.get("removals_count", 0)
-                     + entry.get("modifications_count", 0))
+            # Backfill keys missing from old-format entries
+            entry.setdefault("modifications_count", 0)
+            entry.setdefault("modifications", [])
+            entry.setdefault("additions", [])
+            entry.setdefault("removals", [])
+            entry.setdefault("additions_count", len(entry["additions"]))
+            entry.setdefault("removals_count", len(entry["removals"]))
+            total = (entry["additions_count"]
+                     + entry["removals_count"]
+                     + entry["modifications_count"])
             if total > 0:
                 result.append(entry)
                 if len(result) >= 5:
