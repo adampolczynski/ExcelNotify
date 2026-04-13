@@ -94,7 +94,7 @@ def load_schedule_data():
     recent_sheets = []
     for sheet_df in all_sheets.values():
         # Check if any cell in the sheet contains the current year
-        sheet_text = sheet_df.astype(str).values.flatten()
+        sheet_text = sheet_df.fillna("").astype(str).values.flatten()
         if any(current_year in cell for cell in sheet_text):
             recent_sheets.append(sheet_df)
 
